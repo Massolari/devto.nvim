@@ -1,15 +1,22 @@
 local M = {}
 
+--- Set the local options of the current buffer
+--- @param values table<string, any> The options to set
 function M.set_locals(values)
   for key, value in pairs(values) do
     vim.opt_local[key] = value
   end
 end
 
+--- Check if a path is executable
+--- @param path string The path to check
+--- @return boolean
 local function is_executable(path)
   return vim.fn.executable(path) == 1
 end
 
+--- Get the command to open a URL
+--- @return string?
 local function get_open_command()
   if is_executable("xdg-open") then
     return "xdg-open"
@@ -22,6 +29,8 @@ local function get_open_command()
   end
 end
 
+--- Open a URL on the browser
+--- @param url string The URL to open
 function M.open_url_on_browser(url)
   local cmd = get_open_command()
   if not cmd then
@@ -31,6 +40,10 @@ function M.open_url_on_browser(url)
   vim.fn.system((cmd .. " ") .. url)
 end
 
+--- Pluralize a word
+--- @param count number The count to check
+--- @param singular string The singular form of the word
+--- @param plural string The plural form of the word
 function M.pluralize(count, singular, plural)
   if count == 1 then
     return singular
@@ -38,6 +51,9 @@ function M.pluralize(count, singular, plural)
   return plural or singular .. "s"
 end
 
+--- Open a floating menu
+--- @param content string[] The content of the menu
+--- @param options table<string, any> The options of the floating window
 function M.open_float_menu(content, options)
   local width = 0
   for _, line in ipairs(content) do

@@ -5,8 +5,13 @@ local feed = require("devto-nvim.feed")
 local notify = require("devto-nvim.notify")
 local picker = require("devto-nvim.picker")
 
+--- Error message when the API key is missing
 local NO_API_KEY_ERROR = "devto.nvim: DEVTO_API_KEY environment variable is missing"
 
+--- Check if the API key is set
+--- If the API is set, it will call the callback function
+--- If the API is not set, it will show an error message
+--- @param callback function The function to call if the API key is set
 local function check_api_key(callback)
   if api.key() then
     callback()
@@ -15,10 +20,12 @@ local function check_api_key(callback)
   notify.error(NO_API_KEY_ERROR)
 end
 
+--- Show a selector to pick one of the user's articles
 local function my_articles()
-  return api.my_articles(picker.my_articles)
+  api.my_articles(picker.my_articles)
 end
 
+--- Save the current article to the DEV Community
 local function save_article()
   local buffer_content = buffer.get_content()
   local bufnr = buffer_content.bufnr
@@ -40,6 +47,8 @@ local function save_article()
   )
 end
 
+--- Create a new article
+--- It will ask for the title of the article and open the template in a new buffer
 local function new_article()
   local status, title = pcall(
     function(prompt) return vim.fn.input(prompt) end,
@@ -59,6 +68,7 @@ local function new_article()
   )
 end
 
+--- Open an article by URL
 local function open_by_url()
   local status, url = pcall(
     function(prompt) return vim.fn.input(prompt) end,
@@ -81,43 +91,51 @@ end
 
 local devto_au_group = vim.api.nvim_create_augroup("devto_autocmds", {})
 
-vim.api.nvim_create_autocmd("BufWriteCmd",
-  { group = devto_au_group, pattern = "devto://my-article/*", callback = save_article })
-vim.api.nvim_create_autocmd("BufEnter",
-  { group = devto_au_group, pattern = "devto://articles/feed", callback = feed.load })
-vim.api.nvim_create_autocmd(
-  "CursorMoved",
-  {
-    group = devto_au_group,
-    pattern = "devto://*/floatmenu",
-    callback = function()
-      local bufnum, line, column, off = unpack(vim.fn.getpos("."))
-      if column <= 1 then
-        return
+--- Setup the plugin
+--- It will create the necessary autocommands
+--- @param opts? table<string, any> At the moment, it is not used
+function M.setup(opts)
+  vim.api.nvim_create_autocmd("BufWriteCmd",
+    { group = devto_au_group, pattern = "devto://my-article/*", callback = save_article })
+  vim.api.nvim_create_autocmd("BufEnter",
+    { group = devto_au_group, pattern = "devto://articles/feed", callback = feed.load })
+  vim.api.nvim_create_autocmd(
+    "CursorMoved",
+    {
+      group = devto_au_group,
+      pattern = "devto://*/floatmenu",
+      callback = function()
+        local bufnum, line, column, off = unpack(vim.fn.getpos("."))
+        if column <= 1 then
+          return
+        end
+        vim.fn.setpos(".", { bufnum, line, 1, off })
       end
-      vim.fn.setpos(".", { bufnum, line, 1, off })
-    end
-  }
-)
-vim.api.nvim_create_autocmd(
-  "BufEnter",
-  {
-    group = devto_au_group,
-    pattern = "devto://*/floatmenu",
-    callback = function()
-      vim.keymap.set(
-        "n",
-        "<Esc>",
-        function() return vim.api.nvim_win_close(0, false) end
-      )
-    end
-  }
-)
+    }
+  )
+  vim.api.nvim_create_autocmd(
+    "BufEnter",
+    {
+      group = devto_au_group,
+      pattern = "devto://*/floatmenu",
+      callback = function()
+        vim.keymap.set(
+          "n",
+          "<Esc>",
+          function() return vim.api.nvim_win_close(0, false) end
+        )
+      end
+    }
+  )
 
-if not api.key() then
-  notify.error(NO_API_KEY_ERROR)
+  if not api.key() then
+    notify.error(NO_API_KEY_ERROR)
+  end
 end
 
+--- Check if the API key is set before calling the callback
+--- @param callback function The function to call if the API key is set
+--- @return function
 local function check_api_middleware(callback)
   return function()
     check_api_key(callback)

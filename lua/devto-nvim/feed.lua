@@ -5,10 +5,24 @@ local notify = require("devto-nvim.notify")
 local util = require("devto-nvim.util")
 local set_locals = util.set_locals
 
+---@class FeedArticle
+---@field id number
+---@field title string
+---@field url string
+---@field description string
+---@field user Author
+---@field reading_time_minutes number
+---@field tag_list string[]
+---@field positive_reactions_count number
+---@field comments_count number
+---@field readable_publish_date string
+
+--- Open the feed in a new buffer
 function M.open()
   return vim.cmd("edit devto://articles/feed")
 end
 
+--- Set the basic options for the feed buffer
 local function set_basic_options()
   buffer.set_basic_options()
   set_locals({
@@ -19,6 +33,11 @@ local function set_basic_options()
   })
 end
 
+--- Seek the title of the article
+--- @param line number The line to start the search
+--- @param get_next_line fun(line: number): number The function to get the next line
+--- @param count number The number of iterations
+--- @return string? The title of the article, or nil if it was not found
 local function seek_title(line, get_next_line, count)
   local line_content = vim.fn.getline(line)
   local title = string.match(line_content, " ## (.+)", 1)
@@ -39,6 +58,9 @@ local function seek_title(line, get_next_line, count)
   )
 end
 
+--- Get the title of the card
+--- @param line number The line to start the search
+--- @return string? The title of the card, or nil if it was not found
 local function get_card_title(line)
   local content = vim.fn.getline(line)
 
@@ -54,6 +76,8 @@ local function get_card_title(line)
   return seek_title(line, get_next_line, 0)
 end
 
+--- Open an article in a new buffer or in the browser
+--- @param location "buffer"|"browser" The location to open the article
 function M.open_article(location)
   local title = get_card_title(vim.fn.line("."))
 
@@ -75,6 +99,7 @@ function M.open_article(location)
   end
 end
 
+--- Set the key maps for the feed buffer
 local function set_key_maps()
   vim.keymap.set(
     "n",
@@ -90,6 +115,8 @@ local function set_key_maps()
   )
 end
 
+--- Populate the global variable with the feed articles
+--- @param articles FeedArticle[] The articles to populate the global variable
 local function populate_global_feed_articles(articles)
   _G.devto_feed_articles = {}
   for _, article in ipairs(articles) do
@@ -97,6 +124,10 @@ local function populate_global_feed_articles(articles)
   end
 end
 
+--- Return the card for an article
+--- @param article FeedArticle The article to create the card
+--- @param maxColumns number The maximum number of columns for the card
+--- @return string[] The card for the article
 local function article_to_feed(article, maxColumns)
   return {
     ("🭽" .. string.rep("▔", maxColumns)) .. "🭾",
@@ -115,6 +146,7 @@ local function article_to_feed(article, maxColumns)
   }
 end
 
+--- Load the feed
 function M.load()
   set_basic_options()
   local bufnr = vim.api.nvim_get_current_buf()
@@ -149,6 +181,13 @@ function M.load()
   end)
 end
 
+--- Convert tags to a string
+--- Each tag will be prefixed with a hash
+--- ```lua
+--- tags_to_string({ "lua", "neovim" }) -- "#lua, #neovim"
+--- ```
+--- @param tags string[] The tags to convert
+--- @return string The tags as a string
 function M.tags_to_string(tags)
   local formatted_tags = vim.tbl_map(function(tag)
     return "#" .. tag

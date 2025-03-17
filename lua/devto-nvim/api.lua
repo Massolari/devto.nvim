@@ -2,18 +2,28 @@ local M = {}
 local notify = require("devto-nvim.notify")
 local article = require("devto-nvim.article")
 
+--- Get the API key from the environment
+--- @return string? The API key, or nil if it is not set
 function M.key()
   return vim.env.DEVTO_API_KEY
 end
 
+--- The base URL for the API
 local BASE_URL = "https://dev.to/api"
 
 ---@class Response
 ---@field status number
 ---@field body table
 
+---@class CurlOptions
+---@field headers table<string, string>?
+---@field body table?
+
 ---@alias Method "GET" | "POST" | "PUT" | "DELETE"
 
+--- Handle an error response
+--- If the response is successful, the `on_success` callback will be called with the response body
+--- If the response is an error, the error will be displayed to the user
 ---@param response Response
 ---@param on_success fun(body: table)
 function M.handle_error(response, on_success)
@@ -33,6 +43,7 @@ function M.handle_error(response, on_success)
   end
 end
 
+--- Convert a `vim.SystemCompleted` object to a `Response` object
 ---@param out vim.SystemCompleted
 ---@return Response
 local function system_completed_to_response(out)
@@ -51,7 +62,7 @@ local function system_completed_to_response(out)
   -- Only attempt to decode if we have a body
   if response_body and response_body ~= "" then
     -- Protect against JSON decode errors
-    body = vim.fn.json_decode(response_body)
+    body = vim.json.decode(response_body)
   end
 
   return {
@@ -60,14 +71,15 @@ local function system_completed_to_response(out)
   }
 end
 
----@param method Method
----@param endpoint string
----@param options table
----@param on_exit fun(response: Response)?
+--- Make a curl request
+---@param method Method The HTTP method to use
+---@param endpoint string The endpoint to hit
+---@param options CurlOptions Options to pass to curl
+---@param on_exit fun(response: Response)? A callback to run when the request is complete, if not provided the request will be synchronous
 ---@return vim.SystemObj
 local function curl(method, endpoint, options, on_exit)
   local headers = options.headers or {}
-  local request_body = options.body and { "-d", vim.fn.json_encode(options.body) } or {}
+  local request_body = options.body and { "-d", vim.json.encode(options.body) } or {}
 
   local cmd = vim.iter({
     "curl",
@@ -91,11 +103,13 @@ local function curl(method, endpoint, options, on_exit)
   end)
 end
 
----@param method Method
----@param endpoint string
----@param options table
+--- Make a synchronous request to the API
+---@param method Method The HTTP method to use
+---@param endpoint string The endpoint to hit
+---@param options CurlOptions Options to pass to curl
 ---@return Response
 local function request(method, endpoint, options)
+  ---@type CurlOptions
   local parameters = vim.tbl_extend(
     "force",
     {
@@ -114,10 +128,12 @@ local function request(method, endpoint, options)
   return response
 end
 
----@param method Method
----@param endpoint string
----@param on_success fun(body: table)
+--- Make an asynchronous request to the API
+---@param method Method The HTTP method to use
+---@param endpoint string The endpoint to hit
+---@param on_success fun(body: table) A callback to run when the request is successful
 local function request_async(method, endpoint, on_success)
+  ---@type CurlOptions
   local options = {
     headers = {
       "Api-Key: " .. M.key()
@@ -133,8 +149,9 @@ local function request_async(method, endpoint, on_success)
   )
 end
 
----@param endpoint string
----@param on_success fun(body: table)
+--- Make a asynchronous GET request to the API
+---@param endpoint string The endpoint to hit
+---@param on_success fun(body: table) A callback to run when the request is successful
 local function get(endpoint, on_success)
   request_async(
     "GET",
@@ -143,27 +160,33 @@ local function get(endpoint, on_success)
   )
 end
 
----@param endpoint string
----@param body table
+--- Make a synchronous PUT request to the API
+---@param endpoint string The endpoint to hit
+---@param body table The body of the request
 ---@return Response
 local function put(endpoint, body)
   return request("PUT", endpoint, { body = body })
 end
 
----@param endpoint string
----@param body table
+--- Make a synchronous POST request to the API
+---@param endpoint string The endpoint to hit
+---@param body table The body of the request
 ---@return Response
 local function post(endpoint, body)
   return request("POST", endpoint, { body = body })
 end
 
----@param on_success fun(body: table)
+--- Fetch all articles for the current user
+--- The request is asynchronous
+---@param on_success fun(body: table) A callback to run when the request is successful
 function M.my_articles(on_success)
   return get("/articles/me/all", on_success)
 end
 
----@param id number
----@param content string
+--- Save an article
+--- The request is synchronous
+---@param id number The ID of the article to save
+---@param content string The new content of the article
 ---@return Response
 function M.save_article(id, content)
   return put(
@@ -172,7 +195,9 @@ function M.save_article(id, content)
   )
 end
 
----@param title string
+--- Create a new article
+--- The request is synchronous
+---@param title string The title of the new article
 ---@return Response
 function M.new_article(title)
   return post(
@@ -181,13 +206,17 @@ function M.new_article(title)
   )
 end
 
----@param on_success fun(body: table)
+--- Fetch the feed of articles of the current user
+--- The request is asynchronous
+---@param on_success fun(body: FeedArticle[]) A callback to run when the request is successful
 function M.feed(on_success)
   get("/articles", on_success)
 end
 
----@param id number
----@param on_success fun(body: table)
+--- Fetch an article by ID
+--- The request is asynchronous
+---@param id number The ID of the article to fetch
+---@param on_success fun(body: table) A callback to run when the request is successful
 function M.get_article(id, on_success)
   get(
     "/articles/" .. tostring(id),
@@ -195,8 +224,10 @@ function M.get_article(id, on_success)
   )
 end
 
----@param path string
----@param on_success fun(body: table)
+--- Fetch an article by path
+--- The request is asynchronous
+---@param path string The path of the article to fetch
+---@param on_success fun(body: table) A callback to run when the request is successful
 function M.get_article_by_path(path, on_success)
   get("/articles/" .. path, on_success)
 end

@@ -1,7 +1,10 @@
 local M = {}
 local buffer = require("devto-nvim.buffer")
 local Article = require("devto-nvim.article")
+local notify = require("devto-nvim.notify")
 
+--- Open the Telescope picker to select an article
+--- @param articles Article[]
 local function my_articles_telescope_picker(articles)
   local telescope_config = require("telescope.config")
   local config_values = telescope_config.values
@@ -11,7 +14,7 @@ local function my_articles_telescope_picker(articles)
   local pickers = require("telescope.pickers")
   local previewers = require("telescope.previewers")
 
-  return pickers.new(
+  pickers.new(
     {},
     {
       prompt_title = "My Articles",
@@ -46,9 +49,11 @@ local function my_articles_telescope_picker(articles)
         end)
       end
     }
-  )
+  ):find()
 end
 
+--- Open the FZF Lua picker to select an article
+--- @param articles Article[]
 local function my_articles_fzf_lua_picker(articles)
   local articles_name = vim.tbl_map(function(article) return article.title end, articles)
   local ArticlePreviewer = require 'fzf-lua.previewer.builtin'.base:extend()
@@ -96,10 +101,12 @@ local function my_articles_fzf_lua_picker(articles)
   )
 end
 
+--- Open the picker to select an article
+--- @param articles Article[]
 function M.my_articles(articles)
   local telescope_status, _ = pcall(require, "telescope")
   if telescope_status then
-    my_articles_telescope_picker(articles):find()
+    my_articles_telescope_picker(articles)
     return
   end
 
@@ -109,10 +116,20 @@ function M.my_articles(articles)
     return
   end
 
-  vim.ui.select(vim.tbl_map(function(article) return article.title end, articles), {
+  vim.ui.select(vim.tbl_map(function(article)
+    return article.title
+  end, articles), {
     prompt = "My Articles",
   }, function(selection)
-    local article = vim.tbl_filter(function(a) return a.title == selection end, articles)[1]
+    ---@type Article?
+    local article = vim.tbl_filter(function(a)
+      return a.title == selection
+    end, articles)[1]
+
+    if not article then
+      notify.error(string.format("Could not find article %s", selection))
+      return
+    end
     buffer.open_my_article(article)
   end)
 end
