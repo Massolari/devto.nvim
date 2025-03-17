@@ -2,6 +2,7 @@ local M = {}
 local stub = require("luassert.stub")
 local spy = require("luassert.spy")
 local match = require("luassert.match")
+local assert = require("luassert.assert")
 local article = require("devto-nvim.article")
 local busted = require("plenary.busted")
 local describe = busted.describe
@@ -9,6 +10,9 @@ local before_each = busted.before_each
 local after_each = busted.after_each
 local it = busted.it
 
+--- Mocks a module and returns the mocked module
+--- @param module string
+--- @return table
 local function mock_internal(module)
   _G.package.loaded["devto-nvim"] = nil
   _G.package.loaded[module] = nil

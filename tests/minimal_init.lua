@@ -1,3 +1,6 @@
+--- Load a module from a git repository.
+--- @param module string
+--- @param source string
 local function load_module(module, source, directory)
   local module_dir = directory or ("/tmp/" .. module)
   local directory_exists = vim.fn.isdirectory(module_dir)
@@ -7,8 +10,6 @@ local function load_module(module, source, directory)
   end
 
   vim.opt.rtp:append(module_dir)
-
-  return module_dir
 end
 
 local plenary_dir = os.getenv("PLENARY_DIR") or "/tmp/plenary.nvim"
