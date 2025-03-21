@@ -91,6 +91,15 @@ end
 
 local devto_au_group = vim.api.nvim_create_augroup("devto_autocmds", {})
 
+--- Check if the API key is set before calling the callback
+--- @param callback function The function to call if the API key is set
+--- @return function
+local function check_api_middleware(callback)
+  return function()
+    check_api_key(callback)
+  end
+end
+
 --- Setup the plugin
 --- It will create the necessary autocommands
 --- @param opts? table<string, any> At the moment, it is not used
@@ -131,19 +140,11 @@ function M.setup(opts)
   if not api.key() then
     notify.error(NO_API_KEY_ERROR)
   end
+
+  M.my_articles = check_api_middleware(my_articles)
+  M.new_article = check_api_middleware(new_article)
+  M.feed = check_api_middleware(feed.open)
+  M.open_url = check_api_middleware(open_by_url)
 end
 
---- Check if the API key is set before calling the callback
---- @param callback function The function to call if the API key is set
---- @return function
-local function check_api_middleware(callback)
-  return function()
-    check_api_key(callback)
-  end
-end
-
-M.my_articles = check_api_middleware(my_articles)
-M.new_article = check_api_middleware(new_article)
-M.feed = check_api_middleware(feed.open)
-M.open_url = check_api_middleware(open_by_url)
 return M
