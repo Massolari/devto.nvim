@@ -1,7 +1,3 @@
-local M = {}
-local devto = require("devto-nvim")
-local notify = require("devto-nvim.notify")
-
 local commands = {
   feed = "feed",
   my_articles = "my_articles",
@@ -12,6 +8,9 @@ local commands = {
 vim.api.nvim_create_user_command(
   "Devto",
   function(data)
+    local devto = require("devto-nvim")
+    local notify = require("devto-nvim.notify")
+
     local args = data.args
 
     if args == commands.feed then
@@ -31,4 +30,3 @@ vim.api.nvim_create_user_command(
     complete = function() return vim.tbl_values(commands) end
   }
 )
-return M
