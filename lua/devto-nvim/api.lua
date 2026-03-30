@@ -1,6 +1,5 @@
 local M = {}
 local notify = require("devto-nvim.notify")
-local article = require("devto-nvim.article")
 
 --- Get the API key from the environment
 --- @return string? The API key, or nil if it is not set
@@ -67,7 +66,7 @@ local function system_completed_to_response(out)
 
   return {
     status = status_code,
-    body = body
+    body = body,
   }
 end
 
@@ -81,17 +80,20 @@ local function curl(method, endpoint, options, on_exit)
   local headers = options.headers or {}
   local request_body = options.body and { "-d", vim.json.encode(options.body) } or {}
 
-  local cmd = vim.iter({
-    "curl",
-    "-X",
-    method,
-    "-i", -- Include headers in the output
-    vim.tbl_map(function(header)
-      return { "-H", header }
-    end, headers),
-    request_body,
-    BASE_URL .. endpoint
-  }):flatten(2):totable()
+  local cmd = vim
+    .iter({
+      "curl",
+      "-X",
+      method,
+      "-i", -- Include headers in the output
+      vim.tbl_map(function(header)
+        return { "-H", header }
+      end, headers),
+      request_body,
+      BASE_URL .. endpoint,
+    })
+    :flatten(2)
+    :totable()
 
   return vim.system(cmd, { text = true }, function(out)
     vim.schedule(function()
@@ -110,17 +112,13 @@ end
 ---@return Response
 local function request(method, endpoint, options)
   ---@type CurlOptions
-  local parameters = vim.tbl_extend(
-    "force",
-    {
-      headers = {
-        "api-key: " .. M.key(),
-        "Content-Type: application/json",
-        "Accept: application/vnd.devto.api-v1+json"
-      }
+  local parameters = vim.tbl_extend("force", {
+    headers = {
+      "api-key: " .. M.key(),
+      "Content-Type: application/json",
+      "Accept: application/vnd.devto.api-v1+json",
     },
-    options
-  )
+  }, options)
 
   local out = curl(method, endpoint, parameters, nil):wait()
   local response = system_completed_to_response(out)
@@ -136,28 +134,20 @@ local function request_async(method, endpoint, on_success)
   ---@type CurlOptions
   local options = {
     headers = {
-      "Api-Key: " .. M.key()
-    }
+      "Api-Key: " .. M.key(),
+    },
   }
 
   curl(method, endpoint, options, function(response)
-    M.handle_error(
-      response,
-      on_success
-    )
-  end
-  )
+    M.handle_error(response, on_success)
+  end)
 end
 
 --- Make a asynchronous GET request to the API
 ---@param endpoint string The endpoint to hit
 ---@param on_success fun(body: table) A callback to run when the request is successful
 local function get(endpoint, on_success)
-  request_async(
-    "GET",
-    endpoint,
-    on_success
-  )
+  request_async("GET", endpoint, on_success)
 end
 
 --- Make a synchronous PUT request to the API
@@ -189,10 +179,7 @@ end
 ---@param content string The new content of the article
 ---@return Response
 function M.save_article(id, content)
-  return put(
-    "/articles/" .. tostring(id),
-    { article = { body_markdown = content } }
-  )
+  return put("/articles/" .. tostring(id), { article = { body_markdown = content } })
 end
 
 --- Create a new article
@@ -200,10 +187,7 @@ end
 ---@param title string The title of the new article
 ---@return Response
 function M.new_article(title)
-  return post(
-    "/articles",
-    { article = { body_markdown = article.get_template(title) } }
-  )
+  return post("/articles", { article = { body_markdown = require("devto-nvim.article").get_template(title) } })
 end
 
 --- Fetch the feed of articles of the current user
@@ -218,10 +202,7 @@ end
 ---@param id number The ID of the article to fetch
 ---@param on_success fun(body: table) A callback to run when the request is successful
 function M.get_article(id, on_success)
-  get(
-    "/articles/" .. tostring(id),
-    on_success
-  )
+  get("/articles/" .. tostring(id), on_success)
 end
 
 --- Fetch an article by path

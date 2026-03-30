@@ -6,7 +6,7 @@ local notify = require("devto-nvim.notify")
 local picker = require("devto-nvim.picker")
 
 --- Error message when the API key is missing
-local NO_API_KEY_ERROR = "devto.nvim: DEVTO_API_KEY environment variable is missing"
+M.NO_API_KEY_ERROR = "devto.nvim: DEVTO_API_KEY environment variable is missing"
 
 --- Check if the API key is set
 --- If the API is set, it will call the callback function
@@ -17,7 +17,7 @@ local function check_api_key(callback)
     callback()
     return
   end
-  notify.error(NO_API_KEY_ERROR)
+  notify.error(M.NO_API_KEY_ERROR)
 end
 
 --- Show a selector to pick one of the user's articles
@@ -38,42 +38,34 @@ local function save_article()
   end
 
   local response = api.save_article(id, content)
-  api.handle_error(
-    response,
-    function()
-      notify.info("Article saved")
-      vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
-    end
-  )
+  api.handle_error(response, function()
+    notify.info("Article saved")
+    vim.api.nvim_set_option_value("modified", false, { buf = bufnr })
+  end)
 end
 
 --- Create a new article
 --- It will ask for the title of the article and open the template in a new buffer
 local function new_article()
-  local status, title = pcall(
-    function(prompt) return vim.fn.input(prompt) end,
-    "Article's Title: "
-  )
+  local status, title = pcall(function(prompt)
+    return vim.fn.input(prompt)
+  end, "Article's Title: ")
 
   if not status or title == "" then
     return
   end
 
   local response = api.new_article(title)
-  api.handle_error(
-    response,
-    function(article)
-      buffer.open_my_article(article)
-    end
-  )
+  api.handle_error(response, function(article)
+    buffer.open_my_article(article)
+  end)
 end
 
 --- Open an article by URL
 local function open_by_url()
-  local status, url = pcall(
-    function(prompt) return vim.fn.input(prompt) end,
-    "Article's URL: "
-  )
+  local status, url = pcall(function(prompt)
+    return vim.fn.input(prompt)
+  end, "Article's URL: ")
 
   if not status or url == "" then
     return
@@ -104,42 +96,34 @@ end
 --- It will create the necessary autocommands
 --- @param opts? table<string, any> At the moment, it is not used
 function M.setup(opts)
-  vim.api.nvim_create_autocmd("BufWriteCmd",
-    { group = devto_au_group, pattern = "devto://my-article/*", callback = save_article })
-  vim.api.nvim_create_autocmd("BufEnter",
-    { group = devto_au_group, pattern = "devto://articles/feed", callback = feed.load })
   vim.api.nvim_create_autocmd(
-    "CursorMoved",
-    {
-      group = devto_au_group,
-      pattern = "devto://*/floatmenu",
-      callback = function()
-        local bufnum, line, column, off = unpack(vim.fn.getpos("."))
-        if column <= 1 then
-          return
-        end
-        vim.fn.setpos(".", { bufnum, line, 1, off })
-      end
-    }
+    "BufWriteCmd",
+    { group = devto_au_group, pattern = "devto://my-article/*", callback = save_article }
   )
   vim.api.nvim_create_autocmd(
     "BufEnter",
-    {
-      group = devto_au_group,
-      pattern = "devto://*/floatmenu",
-      callback = function()
-        vim.keymap.set(
-          "n",
-          "<Esc>",
-          function() return vim.api.nvim_win_close(0, false) end
-        )
-      end
-    }
+    { group = devto_au_group, pattern = "devto://articles/feed", callback = feed.load }
   )
-
-  if not api.key() then
-    notify.error(NO_API_KEY_ERROR)
-  end
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    group = devto_au_group,
+    pattern = "devto://*/floatmenu",
+    callback = function()
+      local bufnum, line, column, off = unpack(vim.fn.getpos("."))
+      if column <= 1 then
+        return
+      end
+      vim.fn.setpos(".", { bufnum, line, 1, off })
+    end,
+  })
+  vim.api.nvim_create_autocmd("BufEnter", {
+    group = devto_au_group,
+    pattern = "devto://*/floatmenu",
+    callback = function()
+      vim.keymap.set("n", "<Esc>", function()
+        return vim.api.nvim_win_close(0, false)
+      end)
+    end,
+  })
 
   M.my_articles = check_api_middleware(my_articles)
   M.new_article = check_api_middleware(new_article)
