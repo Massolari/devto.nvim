@@ -109,7 +109,7 @@ local function set_key_maps()
   )
   vim.keymap.set(
     "n",
-    "<C-b>",
+    "<LocalLeader>b",
     function() return M.open_article("browser") end,
     { buffer = true, silent = true }
   )
@@ -173,7 +173,7 @@ function M.load()
         "# Your Feed",
         "",
         "Press <Enter> in a card to open the article in a new buffer",
-        "and <C-b> to open it in the browser.",
+        "and <localleader><b> to open it in the browser.",
         "",
         unpack(feed)
       }

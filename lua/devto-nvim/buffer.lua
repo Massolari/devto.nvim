@@ -15,8 +15,8 @@ end
 --- @param buffer number The buffer to write to
 --- @param lines string[] The lines to write
 function M.write(buffer, lines, offset)
-  local modifiable = vim.o.modifiable
-  vim.o.modifiable = true
+  local modifiable = vim.bo[buffer].modifiable
+  vim.bo[buffer].modifiable = true
   vim.api.nvim_buf_set_lines(
     buffer,
     offset or 0,
@@ -24,7 +24,7 @@ function M.write(buffer, lines, offset)
     false,
     lines
   )
-  vim.o.modifiable = modifiable
+  vim.bo[buffer].modifiable = modifiable
 end
 
 --- Get the content of the current buffer
